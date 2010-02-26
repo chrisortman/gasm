@@ -1,0 +1,5 @@
+directory "build"
+file "build/sample.exe" => ["build"] do
+  touch "build/sample.exe"
+end
+task :default => ["build/sample.exe"]
