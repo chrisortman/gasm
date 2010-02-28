@@ -1,6 +1,19 @@
 require 'fileutils'
+require 'open-uri'
+require 'nokogiri'
+require 'logger'
+
+module GasmLogging
+
+  def log
+    @log = Logger.new(STDOUT) if @log.nil?
+    @log
+  end
+end
 
 class Project 
+  include GasmLogging
+
   attr_accessor :source_url, :build_cmd
 
   def initialize(opts = {})
@@ -9,6 +22,7 @@ class Project
   end
 
   def build(opts = {})
+    log.info "Building project #{@source_url}"
 
     download_source(opts[:source_dir])
     cur_dir = Dir.getwd
@@ -18,9 +32,11 @@ class Project
   end
 
   def download_source(to_path)
+    log.info "Downloading source to #{to_path}"
     cur_dir = Dir.pwd
     FileUtils.mkdir_p to_path
     Dir.chdir to_path
+    log.info "Cloning git repository #{@source_url}"
     %x( git clone #{@source_url} )
     Dir.chdir cur_dir
   end
@@ -43,5 +59,41 @@ module SourceControl
   end
 
   class Svn
+  end
+end
+
+class GasmProgram
+
+  class Configuration
+    attr_accessor :gasm_dir
+  end
+
+  def configure(&block)
+    config = Configuration.new
+    yield config
+    @config = config
+  end
+
+  def list(&block)
+    doc = Nokogiri::HTML(open("http://localhost:4567/index.html"))
+    doc.css("ul#projects li a").each do |p|
+      yield p.text
+    end
+  end
+
+  def install(project)
+    doc = Nokogiri::HTML(open("http://localhost:4567/index.html"))
+    project_url = doc.css("ul#projects li##{project} a").first.attr("href")
+
+    project_doc = Nokogiri::HTML(open(project_url))
+    source_url = project_doc.css("a#source_url").attr("href")
+    build_cmd = project_doc.css("p#build_command").text
+
+    p = Project.new(:source_url => source_url, :build_cmd => build_cmd)
+    p.build(:source_dir => @config.gasm_dir)
+
+    #FileUtils.mkdir_p "#{@config.gasm_dir}/sample_project/.git"
+    #FileUtils.mkdir_p "#{@config.gasm_dir}/sample_project/build"
+    #FileUtils.touch "#{@config.gasm_dir}/sample_project/build/sample.exe"
   end
 end

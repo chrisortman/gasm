@@ -1,15 +1,7 @@
 require 'rubygems'
 require 'rake'
-require 'colored'
+require 'redgreen'
 require 'rake/testtask'
-
-def banner(title, pad = 85)
-  puts "\n#{title} ".ljust(pad, "*").yellow
-end
-
-def stripe
-  puts ("-" * 84 + "\n").yellow
-end
 
 task :create_sample_project, :dir do |t, args|
   sample_path = "#{args.dir}/sample_project"
