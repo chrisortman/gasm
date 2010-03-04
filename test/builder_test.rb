@@ -17,34 +17,6 @@ class SourceControlTest < Test::Unit::TestCase
   
 end
 
-class BuilderTest < Test::Unit::TestCase
-
-  context "A project" do
-    
-    setup do
-      FileUtils.rm_rf "gasm_source"
-      @project = Project.new(:source_url => "git://localhost/sample_project",
-                             :build_cmd => "rake")
-    end
-
-    teardown do
-      FileUtils.rm_rf "gasm_source"
-    end
-
-    context "with no dependencies" do
-      
-      context "when building" do
-        setup do
-          @project.build(:source_dir => "gasm_source") 
-        end
-        should_create_directory("source checkout", "gasm_source/sample_project/.git")
-        should_create_directory("build outputs", "gasm_source/sample_project/build")
-        should_create_file("project output", "gasm_source/sample_project/build/sample.exe")
-      end
-    end
-  end
-end
-
 class GasmProgramTest < Test::Unit::TestCase
 
   context "The gasm program" do
@@ -72,9 +44,17 @@ class GasmProgramTest < Test::Unit::TestCase
       should "include the sample project" do
         assert @projects.include? "sample_project"
       end
+
+      should "include the sample a project" do
+        assert @projects.include? "sample_project_a"
+      end
+
+      should "include the sample b project" do
+        assert @projects.include? "sample_project_b"
+      end
     end
     
-    context "when installing a project by name" do
+    context "when installing a project with no dependencies by name" do
       
       setup do
         @gasm.install "sample_project"
@@ -83,6 +63,19 @@ class GasmProgramTest < Test::Unit::TestCase
       should_create_directory("source checkout", "gasm_source/sample_project/.git")
       should_create_directory("build outputs", "gasm_source/sample_project/build")
       should_create_file("project output", "gasm_source/sample_project/build/sample.exe")
+    end
+
+    context "when installing a project with dependencies by name" do
+      
+      setup do
+        @gasm.install "sample_project_a"
+      end
+
+      ["sample_project_a","sample_project_b"].each do |proj|
+        should_create_directory("source checkout for #{proj}", "gasm_source/#{proj}/.git")
+        should_create_directory("build outputs for #{proj}", "gasm_source/#{proj}/build")
+        should_create_file("project output for #{proj}", "gasm_source/#{proj}/build/sample.exe")
+      end
     end
   end
 end
