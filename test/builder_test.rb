@@ -68,6 +68,7 @@ class GasmProgramTest < Test::Unit::TestCase
     context "when installing a project with dependencies by name" do
       
       setup do
+        @last_modified = Time.now
         @gasm.install "sample_project_a"
       end
 
@@ -75,6 +76,13 @@ class GasmProgramTest < Test::Unit::TestCase
         should_create_directory("source checkout for #{proj}", "gasm_source/#{proj}/.git")
         should_create_directory("build outputs for #{proj}", "gasm_source/#{proj}/build")
         should_create_file("project output for #{proj}", "gasm_source/#{proj}/build/sample.exe")
+
+      end
+
+      should "copy the build outputs of dependent projects to references" do
+        @dependent_sample_exe = File.expand_path("gasm_source/sample_project_a/lib/sample.exe")
+        last_modified = File.mtime(@dependent_sample_exe)
+        assert( last_modified > @last_modified)
       end
     end
   end

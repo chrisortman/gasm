@@ -51,6 +51,7 @@ __END__
     <div class="gasm-options">
       <a id="source_url" href="git://localhost/sample_project">Download Source</a>
       <p id="build_command">rake</p>
+      <p id="output_path">build</p>
     </div>
   </body>
 </html>
@@ -66,9 +67,10 @@ __END__
     <div class="gasm-options">
       <a id="source_url" href="git://localhost/sample_project_a">Download Source</a>
       <p id="build_command">rake</p>
+      <p id="output_path">build</p>
       <ol class="dependencies">
         <li>
-          <a href="http://localhost:4567/sample_project_b.html">Sample Project B</a>
+          <a href="http://localhost:4567/sample_project_b.html">Sample Project B <span class="file-mask">lib/sample.exe</span></a>
         </li>
       </ol>
     </div>
@@ -88,6 +90,7 @@ __END__
     <div class="gasm-options">
       <a id="source_url" href="git://localhost/sample_project_b">Download Source</a>
       <p id="build_command">rake</p>
+      <p id="output_path">build</p>
     </div>
    </body>
  </html>

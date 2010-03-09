@@ -2,11 +2,13 @@ require 'fileutils'
 require 'open-uri'
 require 'nokogiri'
 require 'logger'
+require 'rake'
 
 module GasmLogging
 
   def log
     @log = Logger.new(STDOUT) if @log.nil?
+    @log.level = Logger::WARN
     @log
   end
 end
@@ -14,23 +16,30 @@ end
 class Project 
   include GasmLogging
 
-  attr_accessor :source_url, :build_cmd, :project_url
+  attr_accessor :source_url, :build_cmd, :project_url, :output_path, :project_name
 
   def initialize(opts = {})
     @project_name = opts[:project_name]
     @source_url = opts[:source_url].to_s
     @build_cmd = opts[:build_cmd]
-    @dependent_urls = opts[:dependencies] || []
+    @dependencies = {}
     @project_url = opts[:project_url]
-    log.debug "Opts #{opts.inspect}"
-    log.debug "Dependent URLS #{@dependent_urls.inspect}"
+    @output_path = opts[:output_path]
+
+    if opts[:dependencies]
+      @dependencies = opts[:dependencies]
+    end
   end
 
   def dependencies 
-    @dependent_urls
+    @dependencies.keys
   end
 
-  def build(opts = {})
+  def dependency_mask(dependency_url)
+    @dependencies[dependency_url]
+  end
+
+  def build(project_factory, opts = {})
 
     raise "No project name given" if @project_name.nil? or @project_name.empty?
     source_dir = File.expand_path(opts[:source_dir])
@@ -41,10 +50,21 @@ class Project
     cur_dir = Dir.getwd
     new_work_dir = File.join(source_dir,@project_name)
     log.debug "Changing directory to #{new_work_dir}"
+
+    if @dependencies
+      dependencies.each do |dep|
+        dependent_files = FileList[File.join(new_work_dir,dependency_mask(dep))]
+        d_proj = project_factory.create_project_from_url(dep)
+        d_proj_output_path = File.join(source_dir,d_proj.project_name, d_proj.output_path)    
+        dependent_files.each { |df| cp "#{d_proj_output_path}/#{df.pathmap('%f')}", df}
+      end
+    end
+
     Dir.chdir new_work_dir
     log.info "Building project #{@project_name} using #{@build_cmd}"
     log.debug "Current working directory #{Dir.getwd}"
     log.debug Dir.entries(Dir.getwd)
+
     %x( #{@build_cmd} )
     FileUtils.cd cur_dir
   end
@@ -124,7 +144,7 @@ class GasmProgram
       end
 
       if building
-        building.build(:source_dir => @config.gasm_dir)
+        building.build(self, :source_dir => @config.gasm_dir)
         built << building.project_url
       else
         log.debug "building is null, continuing"
@@ -142,13 +162,21 @@ class GasmProgram
     project = project_doc.css("#project_name").text
     source_url = project_doc.css("a#source_url").attr("href").value
     build_cmd = project_doc.css("p#build_command").text
-    dependent_urls = project_doc.css("ol.dependencies a").collect { |x| x.attr("href") }
-    log.debug "Parsed document #{project_url}, project_name: #{project}, source_url: #{source_url}, build_cmd: #{build_cmd} dependent_urls: #{dependent_urls.inspect}"
+    output_path = project_doc.css("#output_path").text
+
+    dependencies = {}
+    project_doc.css("ol.dependencies a").each do |d|
+      dependencies[d.attr("href")] = d.css("span.file-mask").text
+    end
+
+    log.debug "Parsed document #{project_url}, project_name: #{project}, source_url: #{source_url}, build_cmd: #{build_cmd} dependent_urls: #{dependencies.inspect}"
+
      Project.new(:project_name => project, 
                     :source_url => source_url, 
                     :build_cmd => build_cmd,
-                    :dependencies => dependent_urls,
-                    :project_url => project_url)
+                    :dependencies => dependencies,
+                    :project_url => project_url,
+                    :output_path => output_path)
 
   end
 end
